@@ -3,7 +3,7 @@ import logging
 import sqlite3
 import calendar
 from datetime import datetime, timedelta, date
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes
@@ -706,9 +706,16 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── MAIN ────────────────────────────────────────────────────────────────────
 
+async def post_init(application):
+    await application.bot.set_my_commands([
+        BotCommand("start", "Головне меню 🏠"),
+        BotCommand("menu", "Головне меню 🏠"),
+    ])
+
+
 def main():
     init_db()
-    app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("menu", start))
     app.add_handler(CommandHandler("s", start))  # швидка команда /s
