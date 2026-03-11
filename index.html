@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ОБЛІК</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;900&family=Onest:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+--bg-base:#0A0A0F;--bg-surface:#111118;--bg-elevated:#18181F;--bg-card:#1E1E28;
+--border:#2A2A38;--border-subtle:#1E1E28;
+--accent:#6C63FF;--accent-glow:rgba(108,99,255,0.25);
+--success:#00D4AA;--warning:#FF6B35;--danger:#FF3B5C;
+--text-primary:#F0EFF8;--text-secondary:#8A899C;--text-muted:#4A4960;
+--nav-h:56px;--safe-bottom:env(safe-area-inset-bottom,0px)
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-base);color:var(--text-primary);font-family:'Onest',sans-serif;font-weight:400;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.app{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.tab-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + var(--safe-bottom) + 8px)}
+.tab-page{display:none;padding:0 16px 80px}
+.tab-page.active{display:block}
+
+/* NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:rgba(17,17,24,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border-subtle);display:flex;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--text-muted);font-family:'Onest',sans-serif;font-size:10px;font-weight:500;cursor:pointer;transition:color .2s;position:relative;min-height:44px}
+.nav-item.active{color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:var(--accent);border-radius:0 0 2px 2px}
+.nav-icon{font-size:20px;line-height:1}
+
+/* TOP BAR */
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 0 4px;position:sticky;top:0;z-index:10;background:var(--bg-base)}
+.logo{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.02em}
+.logo .acc{color:var(--accent)}
+.btn-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;font-size:18px;cursor:pointer;color:var(--text-secondary)}
+
+/* ── TODAY: DATE HEADER ── */
+.date-header{display:flex;align-items:baseline;gap:10px;margin:16px 0 18px}
+.dh-num{font-family:'Unbounded',sans-serif;font-weight:900;font-size:48px;line-height:1;color:var(--text-primary);letter-spacing:-0.03em}
+.dh-right{display:flex;flex-direction:column;gap:1px}
+.dh-month{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;color:var(--text-secondary)}
+.dh-dow{font-size:13px;color:var(--text-muted);font-weight:500}
+
+/* ── TODAY CARD ── */
+.today-entry{background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:18px;position:relative;overflow:hidden}
+.te-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.te-hours{font-family:'Unbounded',sans-serif;font-weight:900;font-size:40px;letter-spacing:-0.03em;line-height:1}
+.te-hours .u{font-size:22px;color:var(--accent)}
+.te-hours .mu{font-size:22px;color:var(--text-muted)}
+.te-range{font-family:'Unbounded',sans-serif;font-weight:700;font-size:15px;color:var(--text-secondary)}
+.te-range .arr{color:var(--accent);margin:0 3px}
+.te-meta{font-size:12px;color:var(--text-muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.te-meta span{display:flex;align-items:center}
+.te-meta span+span::before{content:'·';margin-right:6px;color:var(--text-muted)}
+
+/* ── EMPTY STATE ── */
+.empty-today{background:var(--bg-elevated);border:1px dashed var(--border);border-radius:16px;padding:32px 20px;text-align:center;margin-bottom:18px}
+.empty-today .et-icon{font-size:36px;margin-bottom:8px;opacity:0.35}
+.empty-today .et-text{font-size:14px;color:var(--text-muted)}
+
+/* ── WEEK SECTION ── */
+.week-section{margin-bottom:18px}
+.ws-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ws-arrows{display:flex;gap:6px}
+.ws-arr{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text-muted);font-size:13px;transition:color .2s}
+.ws-arr:active{color:var(--text-primary)}
+.ws-arr.disabled{opacity:0.3;pointer-events:none}
+.ws-label{font-family:'Unbounded',sans-serif;font-weight:600;font-size:12px;color:var(--text-secondary)}
+
+.week-strip{display:flex;gap:4px}
+.wd{flex:1;background:var(--bg-elevated);border:1px solid transparent;border-radius:10px;padding:8px 0;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.wd.has{border-color:var(--border)}
+.wd.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-glow)}
+.wd-name{font-family:'Unbounded',sans-serif;font-weight:600;font-size:9px;letter-spacing:0.05em;color:var(--text-muted)}
+.wd.today .wd-name{color:var(--accent)}
+.wd-date{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;color:var(--text-primary);margin:2px 0 1px;line-height:1.1}
+.wd.today .wd-date{color:var(--accent)}
+.wd:not(.has) .wd-date{color:var(--text-muted)}
+.wd-hrs{font-family:'Unbounded',sans-serif;font-weight:700;font-size:11px;color:var(--success);min-height:14px}
+.wd:not(.has) .wd-hrs{color:var(--text-muted);font-weight:600;font-size:10px}
+.wd-bar{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 10px 10px;transform:scaleX(0);transform-origin:left;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.wd.has .wd-bar{background:var(--success)}
+.wd.today .wd-bar{background:var(--accent)}
+
+.week-total{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:0 2px}
+.wt-label{font-size:13px;color:var(--text-secondary)}
+.wt-label strong{font-family:'Unbounded',sans-serif;font-weight:700;color:var(--text-primary)}
+.wt-inc{font-size:12px;color:var(--text-muted)}
+
+/* ── MINI STATS ── */
+.mini-stats{display:flex;gap:8px;margin-bottom:18px}
+.ms-card{flex:1;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 10px;text-align:center}
+.ms-val{font-family:'Unbounded',sans-serif;font-weight:700;font-size:17px;margin-bottom:2px}
+.ms-label{font-size:10px;color:var(--text-muted);font-weight:500}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 14px);right:16px;width:56px;height:56px;background:linear-gradient(135deg,var(--accent),#8B83FF);border:none;border-radius:16px;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:90;box-shadow:0 8px 24px rgba(108,99,255,0.45);transition:transform .15s;line-height:1}
+.fab:active{transform:scale(0.88)}
+
+/* ── SHEETS ── */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+.backdrop.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--bg-surface);border-radius:20px 20px 0 0;z-index:210;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);max-height:92vh;overflow-y:auto;padding-bottom:calc(var(--safe-bottom) + 16px)}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 12px}
+.sheet-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;padding:0 20px}
+.sheet-content{padding:0 20px}
+
+/* ── ENTRY SHEET ── */
+.qe-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.qe-date{font-size:12px;color:var(--text-muted)}
+.time-fields{display:flex;gap:12px;margin-bottom:12px}
+.time-field{flex:1}
+.tf-label{font-family:'Unbounded',sans-serif;font-weight:600;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.tf-input{width:100%;height:56px;background:var(--bg-elevated);border:2px solid var(--border);border-radius:12px;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:26px;letter-spacing:0.04em;color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .2s,box-shadow .2s;user-select:none}
+.tf-input.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.tf-input.warn{border-color:var(--warning);box-shadow:0 0 0 3px rgba(255,107,53,0.2)}
+.live-result{display:flex;justify-content:space-between;align-items:center;background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.lr-label{font-size:13px;color:var(--text-secondary)}
+.lr-value{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;color:var(--accent)}
+.lr-inc{font-size:12px;color:var(--text-muted);font-weight:400;margin-left:6px}
+.numpad{display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;padding:0 4px}
+.numpad.open{display:grid}
+.numpad-key{height:56px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:20px;color:var(--text-primary);cursor:pointer;transition:background .1s;user-select:none}
+.numpad-key:active{background:var(--bg-card)}
+
+.pause-section{margin-bottom:14px}
+.pause-label{font-family:'Unbounded',sans-serif;font-weight:600;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.pause-chips{display:flex;gap:8px}
+.pause-chip{flex:1;height:38px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-secondary);cursor:pointer;transition:all .2s;font-weight:500}
+.pause-chip.active{background:rgba(108,99,255,0.18);border-color:var(--accent);color:var(--accent)}
+.custom-pause-input{display:none;margin-top:8px}
+.custom-pause-input.open{display:flex;align-items:center;gap:8px}
+.custom-pause-input input{width:80px;height:38px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;color:var(--text-primary)}
+
+.note-toggle{font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:10px;display:inline-block}
+.note-area{display:none;margin-bottom:12px}
+.note-area.open{display:block}
+.note-area textarea{width:100%;height:60px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text-primary);font-family:'Onest',sans-serif;font-size:14px;resize:none}
+.note-area textarea::placeholder{color:var(--text-muted)}
+.btn-save{width:100%;height:56px;background:linear-gradient(135deg,var(--accent),#8B83FF);border:none;border-radius:14px;color:#fff;font-family:'Unbounded',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:opacity .2s}
+.btn-save:active{opacity:0.85}
+
+/* ── JOURNAL ── */
+.month-header{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 0 12px}
+.month-header .arr-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--text-secondary);font-size:18px}
+.month-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;min-width:180px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:18px}
+.cal-hdr{font-family:'Unbounded',sans-serif;font-weight:600;font-size:9px;letter-spacing:0.06em;color:var(--text-muted);text-align:center;padding:4px 0}
+.cal-cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-weight:600;font-size:11px;color:var(--text-muted);cursor:pointer;position:relative;transition:background .2s;gap:1px;line-height:1.1}
+.cal-cell .cal-hrs{font-size:8px;font-weight:700;color:var(--accent);opacity:0.8}
+.cal-cell.outside{color:transparent;pointer-events:none}
+.cal-cell.has-data{background:rgba(108,99,255,0.15);color:var(--text-secondary)}
+.cal-cell.has-data.h4{background:rgba(108,99,255,0.25)}
+.cal-cell.has-data.h7{background:rgba(108,99,255,0.45);color:var(--text-primary)}
+.cal-cell.has-data.h9{background:var(--accent);color:#fff}
+.cal-cell.is-today{outline:2px solid var(--accent);outline-offset:-1px}
+.cal-cell.weekend{color:var(--text-muted);opacity:0.4}
+
+.month-summary{display:flex;gap:8px;margin-bottom:18px}
+.month-summary .ms-card{flex:1;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 8px;text-align:center}
+.month-summary .ms-val{font-family:'Unbounded',sans-serif;font-weight:700;font-size:15px}
+.month-summary .ms-label{font-size:10px;color:var(--text-muted)}
+
+.week-group{margin-bottom:14px}
+.week-group-title{font-family:'Unbounded',sans-serif;font-weight:600;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;padding:0 2px}
+.journal-row{background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.jr-date{font-family:'Unbounded',sans-serif;font-weight:600;font-size:12px}
+.jr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.jr-range{font-size:12px;color:var(--text-secondary)}
+.jr-badge{background:rgba(108,99,255,0.15);color:var(--accent);font-family:'Unbounded',sans-serif;font-weight:700;font-size:11px;padding:3px 8px;border-radius:6px}
+.jr-inc{font-size:10px;color:var(--text-muted)}
+.jr-empty{color:var(--text-muted);font-size:12px}
+.jr-add{color:var(--accent);font-size:13px;cursor:pointer;padding:4px 8px}
+.jr-actions{display:flex;gap:6px;margin-top:8px}
+.jr-act-btn{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;border:none;font-family:'Onest',sans-serif}
+.jr-act-edit{background:rgba(108,99,255,0.12);color:var(--accent)}
+.jr-act-edit:active{background:rgba(108,99,255,0.25)}
+.jr-act-del{background:rgba(255,59,92,0.1);color:var(--danger)}
+.jr-act-del:active{background:rgba(255,59,92,0.2)}
+.journal-row.has-data{flex-wrap:wrap}
+.jr-top{display:flex;justify-content:space-between;align-items:center;width:100%}
+
+/* ── REPORT ── */
+.report-chips{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+.r-chip{padding:8px 16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text-secondary);cursor:pointer;transition:all .2s;min-height:44px;display:flex;align-items:center}
+.r-chip.active{background:rgba(108,99,255,0.15);border-color:var(--accent);color:var(--accent)}
+.report-preview{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;font-family:monospace;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-all;color:var(--text-secondary);max-height:400px;overflow-y:auto;margin-bottom:14px}
+.report-preview strong{color:var(--text-primary);font-weight:700}
+.report-preview .rp-head{color:var(--accent)}
+.report-preview .rp-total{color:var(--success)}
+.report-actions{display:flex;gap:10px}
+.r-action{flex:1;height:50px;border-radius:12px;border:none;font-family:'Unbounded',sans-serif;font-weight:600;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s}
+.r-action:active{opacity:0.8}
+.r-action.primary{background:var(--accent);color:#fff}
+.r-action.secondary{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary)}
+
+/* ── SETTINGS ── */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border-subtle)}
+.setting-label{font-size:14px;color:var(--text-primary)}
+.setting-sub{font-size:12px;color:var(--text-muted)}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper-btn{width:36px;height:36px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-primary);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.stepper-val{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;min-width:36px;text-align:center}
+.toggle{width:48px;height:28px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;position:relative;cursor:pointer;transition:background .25s,border-color .25s;flex-shrink:0}
+.toggle.on{background:rgba(108,99,255,0.3);border-color:var(--accent)}
+.toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--text-muted);transition:transform .25s,background .25s}
+.toggle.on .toggle-knob{transform:translateX(20px);background:var(--accent)}
+.rate-input{width:80px;height:36px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:15px;color:var(--text-primary)}
+.rate-input:focus{border-color:var(--accent);outline:none}
+.sett-divider{font-family:'Unbounded',sans-serif;font-weight:600;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);padding:18px 0 4px}
+.btn-danger{width:100%;height:48px;background:rgba(255,59,92,0.12);border:1px solid rgba(255,59,92,0.3);border-radius:12px;color:var(--danger);font-size:14px;font-weight:500;cursor:pointer;margin-top:16px}
+
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 20px;font-size:13px;color:var(--text-primary);z-index:300;transition:transform .3s cubic-bezier(.32,.72,0,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="tab-content" id="tabContent">
+
+<!-- TODAY -->
+<div class="tab-page active" id="pageToday">
+  <div class="top-bar"><div class="logo">ОБ·<span class="acc">Л</span>ІК</div><div class="btn-icon" id="btnSettings">⚙️</div></div>
+  <div class="date-header" id="dateHeader"></div>
+  <div id="todayCardWrap"></div>
+  <div class="week-section">
+    <div class="ws-header"><div class="ws-arrows"><div class="ws-arr" id="wkPrev">◀</div></div><div class="ws-label" id="wsLabel"></div><div class="ws-arrows"><div class="ws-arr" id="wkNext">▶</div></div></div>
+    <div class="week-strip" id="weekStrip"></div>
+    <div class="week-total" id="weekTotal"></div>
+  </div>
+  <div class="mini-stats" id="miniStats"></div>
+</div>
+
+<!-- JOURNAL -->
+<div class="tab-page" id="pageJournal">
+  <div class="top-bar"><div class="logo">ОБ·<span class="acc">Л</span>ІК</div><div style="width:44px"></div></div>
+  <div class="month-header"><div class="arr-btn" id="prevMonth">←</div><div class="month-title" id="monthTitle"></div><div class="arr-btn" id="nextMonth">→</div></div>
+  <div class="cal" id="cal"></div>
+  <div class="month-summary" id="monthSummary"></div>
+  <div id="journalList"></div>
+</div>
+
+<!-- REPORT -->
+<div class="tab-page" id="pageReport">
+  <div class="top-bar"><div class="logo">ОБ·<span class="acc">Л</span>ІК</div><div style="width:44px"></div></div>
+  <div style="font-family:'Unbounded',sans-serif;font-weight:700;font-size:20px;margin:8px 0 2px">ЗВІТ</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Копіювати в блокнот</div>
+  <div class="report-chips" id="reportPeriodChips"><div class="r-chip active" data-rp="this-week">Тиждень</div><div class="r-chip" data-rp="last-week">Мин. тиждень</div><div class="r-chip" data-rp="this-month">Місяць</div></div>
+  <div class="report-preview" id="reportPreview"></div>
+  <div class="report-actions"><button class="r-action primary" id="btnCopyReport" style="flex:1">📋 Скопіювати текст</button></div>
+</div>
+
+</div>
+
+<nav class="bottom-nav">
+  <div class="nav-item active" data-tab="pageToday"><div class="nav-icon">🏠</div>Сьогодні</div>
+  <div class="nav-item" data-tab="pageJournal"><div class="nav-icon">📅</div>Журнал</div>
+  <div class="nav-item" data-tab="pageReport"><div class="nav-icon">📤</div>Звіт</div>
+</nav>
+<button class="fab" id="fabAdd">＋</button>
+<div class="backdrop" id="backdrop"></div>
+
+<!-- ENTRY SHEET -->
+<div class="sheet" id="entrySheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-content">
+    <div class="qe-header"><div class="sheet-title" id="entryTitle">Новий запис</div><div class="qe-date" id="entryDate"></div></div>
+    <div class="time-fields">
+      <div class="time-field"><div class="tf-label">Початок</div><div class="tf-input" id="tfStart">--:--</div></div>
+      <div class="time-field"><div class="tf-label">Кінець</div><div class="tf-input" id="tfEnd">--:--</div></div>
+    </div>
+    <div class="numpad" id="numpad"></div>
+    <div class="live-result">
+      <span class="lr-label">Чистий час</span>
+      <span><span class="lr-value" id="lrValue">—</span><span class="lr-inc" id="lrInc"></span></span>
+    </div>
+    <div class="pause-section">
+      <div class="pause-label">Пауза</div>
+      <div class="pause-chips" id="pauseChips"></div>
+      <div class="custom-pause-input" id="customPauseWrap"><input type="number" id="customPauseInput" min="0" max="480" placeholder="хв"><span>хвилин</span></div>
+    </div>
+    <div class="note-toggle" id="noteToggle">＋ Додати нотатку</div>
+    <div class="note-area" id="noteArea"><textarea id="noteText" placeholder="Конференція, відрядження..."></textarea></div>
+    <button class="btn-save" id="btnSave">Зберегти запис</button>
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-content">
+    <div class="sheet-title" style="margin-bottom:16px">Налаштування</div>
+    <div class="setting-row"><div><div class="setting-label">Стандартна пауза</div><div class="setting-sub">хвилин за замовчуванням</div></div><div class="stepper"><div class="stepper-btn" id="tplPauseMinus">−</div><div class="stepper-val" id="tplPauseVal">30</div><div class="stepper-btn" id="tplPausePlus">+</div></div></div>
+
+    <div class="sett-divider">💰 Дохід</div>
+    <div class="setting-row"><div><div class="setting-label">Прогноз доходу</div><div class="setting-sub">показувати оцінку заробітку</div></div><div class="toggle" id="toggleIncome"><div class="toggle-knob"></div></div></div>
+    <div id="incomeExtra" style="display:none">
+      <div class="setting-row"><div><div class="setting-label">Показувати брутто</div><div class="setting-sub">до податку (за замовч. — нетто)</div></div><div class="toggle" id="toggleBrutto"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div><div class="setting-label">Ставка (брутто)</div><div class="setting-sub">€ за годину</div></div><div style="display:flex;align-items:center;gap:8px"><input class="rate-input" type="number" id="rateInput" step="0.01" min="0" value="14.71"><span style="color:var(--text-muted);font-size:12px">€/год</span></div></div>
+      <div class="setting-row"><div><div class="setting-label">Нетто коефіцієнт</div><div class="setting-sub">% від брутто після відрахувань</div></div><div class="stepper"><div class="stepper-btn" id="netMinus">−</div><div class="stepper-val" id="netVal">94%</div><div class="stepper-btn" id="netPlus">+</div></div></div>
+    </div>
+
+    <button class="btn-danger" id="btnClearAll">🗑 Очистити всі дані</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+</div>
+
+<script>
+const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
+if(tg){tg.ready();tg.expand();tg.setHeaderColor('#0A0A0F');tg.setBackgroundColor('#0A0A0F')}
+function haptic(t='medium'){try{tg&&tg.HapticFeedback&&tg.HapticFeedback.impactOccurred(t)}catch(e){}}
+
+const SK_E='oblik_entries',SK_S='oblik_settings';
+function loadE(){try{return JSON.parse(localStorage.getItem(SK_E))||{}}catch(e){return{}}}
+function saveE(d){localStorage.setItem(SK_E,JSON.stringify(d));if(tg&&tg.CloudStorage)try{tg.CloudStorage.setItem(SK_E,JSON.stringify(d))}catch(e){}}
+function loadS(){
+  const def={tplPause:30,incomeOn:false,showBrutto:false,rate:14.71,netPct:94};
+  try{return Object.assign(def,JSON.parse(localStorage.getItem(SK_S)))}catch(e){return def}
+}
+function saveS(s){localStorage.setItem(SK_S,JSON.stringify(s));if(tg&&tg.CloudStorage)try{tg.CloudStorage.setItem(SK_S,JSON.stringify(s))}catch(e){}}
+let E=loadE(),S=loadS();
+
+const DS=['НД','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+const DF=['неділя','понеділок','вівторок','середа','четвер','п\'ятниця','субота'];
+const MO=['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+const MN=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+
+function dk(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function N(){return new Date()}
+function TK(){return dk(N())}
+function getMon(d){const t=new Date(d);const dy=t.getDay();t.setDate(t.getDate()-dy+(dy===0?-6:1));t.setHours(0,0,0,0);return t}
+function addD(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function cNet(s,e,p){if(!s||!e)return 0;const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);let m=(eh*60+em)-(sh*60+sm);if(m<0)m+=1440;return Math.max(0,m-(p||0))}
+function fHM(m){if(m<=0)return'0г 00хв';return`${Math.floor(m/60)}г ${String(m%60).padStart(2,'0')}хв`}
+function fE(v){return'€'+v.toFixed(2).replace('.',',')}
+function incDisp(m){const g=(m/60)*S.rate;return S.showBrutto?g:g*(S.netPct/100)}
+function incLabel(){return S.showBrutto?'брутто':'нетто'}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+// NAV
+document.querySelectorAll('.nav-item').forEach(i=>{i.addEventListener('click',()=>{
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
+  i.classList.add('active');document.getElementById(i.dataset.tab).classList.add('active');
+  if(i.dataset.tab==='pageJournal')renderJournal();
+  if(i.dataset.tab==='pageReport')renderReport();
+  haptic('light');
+})});
+
+/* ═══ TODAY ═══ */
+function renderToday(){
+  const n=N();
+  // Date header: big number + month/day
+  const dh=document.getElementById('dateHeader');
+  dh.innerHTML=`<div class="dh-num">${n.getDate()}</div><div class="dh-right"><div class="dh-month">${MO[n.getMonth()]}</div><div class="dh-dow">${DF[n.getDay()]}</div></div>`;
+
+  renderTodayCard();
+  renderWeekStrip();
+  renderMiniStats();
+}
+
+function renderTodayCard(){
+  const wr=document.getElementById('todayCardWrap'),key=TK(),entry=E[key];
+  if(!entry){
+    wr.innerHTML=`<div class="empty-today"><div class="et-icon">📝</div><div class="et-text">Ще немає запису сьогодні</div></div>`;
+    return;
+  }
+  const net=cNet(entry.start,entry.end,entry.pause),hr=Math.floor(net/60),mn=net%60;
+  let metaParts=[];
+  if(entry.pause)metaParts.push(`<span>пауза ${entry.pause}хв</span>`);
+  if(entry.note)metaParts.push(`<span>${entry.note}</span>`);
+  wr.innerHTML=`
+    <div class="today-entry" id="todayCard">
+      <div class="te-top">
+        <div class="te-hours">${hr}<span class="u">г</span> ${String(mn).padStart(2,'0')}<span class="mu">хв</span></div>
+        <div class="te-range">${entry.start} <span class="arr">→</span> ${entry.end}</div>
+      </div>
+      ${metaParts.length?`<div class="te-meta">${metaParts.join('')}</div>`:''}
+    </div>`;
+  const card=document.getElementById('todayCard');
+  let sx=0,dx=0;
+  card.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;dx=0});
+  card.addEventListener('touchmove',e=>{dx=e.touches[0].clientX-sx});
+  card.addEventListener('touchend',()=>{if(dx<-60&&confirm('Видалити запис?')){delete E[key];saveE(E);renderToday();toast('Видалено');haptic('medium')}});
+  let pt;
+  card.addEventListener('touchstart',()=>{pt=setTimeout(()=>{openEntry(key)},500)});
+  card.addEventListener('touchend',()=>clearTimeout(pt));card.addEventListener('touchmove',()=>clearTimeout(pt));
+}
+
+let weekOffset=0;
+
+function renderWeekStrip(){
+  const strip=document.getElementById('weekStrip');strip.innerHTML='';
+  const mon=addD(getMon(N()),weekOffset*7),tKey=TK(),labels=['ПН','ВТ','СР','ЧТ','ПТ'];
+  let weekMins=0,maxH=1;
+  const days=[];
+  for(let i=0;i<5;i++){
+    const k=dk(addD(mon,i)),e=E[k],m=e?cNet(e.start,e.end,e.pause):0;
+    days.push({k,m,d:addD(mon,i)});weekMins+=m;if(m/60>maxH)maxH=m/60;
+  }
+
+  // header label
+  const d0=days[0].d,d4=days[4].d;
+  const isNow=weekOffset===0;
+  const lbl=document.getElementById('wsLabel');
+  lbl.textContent=isNow?'Поточний тиждень':`${d0.getDate()}.${String(d0.getMonth()+1).padStart(2,'0')} – ${d4.getDate()}.${String(d4.getMonth()+1).padStart(2,'0')}`;
+
+  // arrow states
+  document.getElementById('wkNext').classList.toggle('disabled',weekOffset>=0);
+
+  days.forEach((d,i)=>{
+    const el=document.createElement('div');el.className='wd';
+    if(d.m>0)el.classList.add('has');
+    if(d.k===tKey)el.classList.add('today');
+    const hTxt=d.m>0?`${Math.floor(d.m/60)}:${String(d.m%60).padStart(2,'0')}`:'–';
+    el.innerHTML=`<div class="wd-name">${labels[i]}</div><div class="wd-date">${d.d.getDate()}</div><div class="wd-hrs">${hTxt}</div><div class="wd-bar"></div>`;
+    if(d.m>0){
+      const pct=d.m/60/maxH;
+      setTimeout(()=>{el.querySelector('.wd-bar').style.transform=`scaleX(${pct})`},50+i*50);
+    }
+    el.addEventListener('click',()=>{openEntry(d.k);haptic('light')});
+    strip.appendChild(el);
+  });
+
+  // week total
+  const wt=document.getElementById('weekTotal');
+  let html=`<div class="wt-label">Тиждень: <strong>${fHM(weekMins)}</strong> · ${days.filter(d=>d.m>0).length} днів</div>`;
+  if(S.incomeOn&&weekMins>0)html+=`<div class="wt-inc">≈ ${fE(incDisp(weekMins))} ${incLabel()}</div>`;
+  wt.innerHTML=html;
+}
+
+function renderMiniStats(){
+  const wrap=document.getElementById('miniStats');
+  const ak=Object.keys(E);
+  if(ak.length===0){wrap.innerHTML='';return}
+
+  let totalMins=0;
+  ak.forEach(k=>{totalMins+=cNet(E[k].start,E[k].end,E[k].pause)});
+  const avgH=(totalMins/ak.length/60).toFixed(1);
+
+  // this month total
+  const n=N(),mpfx=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+  let mMins=0,mDays=0;
+  ak.forEach(k=>{if(k.startsWith(mpfx)){mMins+=cNet(E[k].start,E[k].end,E[k].pause);mDays++}});
+
+  wrap.innerHTML=`
+    <div class="ms-card"><div class="ms-val">${avgH}г</div><div class="ms-label">avg/день</div></div>
+    <div class="ms-card"><div class="ms-val">${ak.length}</div><div class="ms-label">записів</div></div>
+    <div class="ms-card"><div class="ms-val">${(mMins/60).toFixed(1)}г</div><div class="ms-label">${MN[n.getMonth()].toLowerCase().slice(0,3)}</div></div>`;
+}
+
+/* ═══ ENTRY SHEET ═══ */
+let eKey=null,aField='start',eDig={start:'',end:''},selPause=30;
+function openEntry(key){
+  eKey=key||null;
+  if(eKey&&E[eKey]){
+    document.getElementById('entryTitle').textContent='Редагувати';
+    const e=E[eKey];eDig.start=e.start.replace(':','');eDig.end=e.end.replace(':','');selPause=e.pause||30;
+    document.getElementById('noteText').value=e.note||'';
+    if(e.note){document.getElementById('noteArea').classList.add('open');document.getElementById('noteToggle').textContent='Нотатка'}
+    else{document.getElementById('noteArea').classList.remove('open');document.getElementById('noteToggle').textContent='＋ Додати нотатку'}
+  }else{
+    document.getElementById('entryTitle').textContent='Новий запис';
+    eDig={start:'',end:''};selPause=S.tplPause||30;
+    document.getElementById('noteText').value='';document.getElementById('noteArea').classList.remove('open');
+    document.getElementById('noteToggle').textContent='＋ Додати нотатку';eKey=eKey||TK();
+  }
+  const d=eKey?new Date(eKey+'T00:00:00'):N();
+  document.getElementById('entryDate').textContent=`${DS[d.getDay()]}, ${d.getDate()} ${MO[d.getMonth()]}`;
+  aField='start';updateTF();renderPC();updateLR();
+  document.getElementById('backdrop').classList.add('open');document.getElementById('entrySheet').classList.add('open');haptic('medium');
+}
+function closeEntry(){document.getElementById('entrySheet').classList.remove('open');document.getElementById('backdrop').classList.remove('open');document.getElementById('numpad').classList.remove('open')}
+document.getElementById('fabAdd').addEventListener('click',()=>openEntry(null));
+document.getElementById('tfStart').addEventListener('click',()=>{aField='start';updateTF();document.getElementById('numpad').classList.add('open');haptic('light')});
+document.getElementById('tfEnd').addEventListener('click',()=>{aField='end';updateTF();document.getElementById('numpad').classList.add('open');haptic('light')});
+
+function updateTF(){
+  const sf=document.getElementById('tfStart'),ef=document.getElementById('tfEnd');
+  sf.classList.toggle('active',aField==='start');ef.classList.toggle('active',aField==='end');
+  sf.textContent=fDig(eDig.start);ef.textContent=fDig(eDig.end);
+  const sv=pTime(eDig.start),ev=pTime(eDig.end);ef.classList.toggle('warn',sv!==null&&ev!==null&&ev<sv);
+}
+function fDig(d){if(!d)return'--:--';const p=d.padEnd(4,'_');return p.slice(0,2).replace(/_/g,'-')+':'+p.slice(2,4).replace(/_/g,'-')}
+function pTime(d){if(!d||d.length<4)return null;const h=parseInt(d.slice(0,2)),m=parseInt(d.slice(2,4));if(h>23||m>59)return null;return h*60+m}
+function tStr(d){if(!d||d.length<4)return null;return d.slice(0,2)+':'+d.slice(2,4)}
+
+(function(){const np=document.getElementById('numpad');['1','2','3','4','5','6','7','8','9','00','0','⌫'].forEach(k=>{
+  const b=document.createElement('div');b.className='numpad-key'+(k==='⌫'?' del':'');b.textContent=k;
+  b.addEventListener('click',()=>{handleNK(k);haptic('light')});np.appendChild(b);
+})})();
+
+function handleNK(k){
+  let d=eDig[aField]||'';
+  if(k==='⌫')d=d.slice(0,-1);
+  else{if(d.length>=4)return;d+=k;if(d.length===1&&parseInt(d)>2)d='0'+d;if(d.length>=2&&parseInt(d.slice(0,2))>23){d=d.slice(0,-1);return}if(d.length>=4&&parseInt(d.slice(2,4))>59){d=d.slice(0,-1);return}}
+  eDig[aField]=d;updateTF();updateLR();
+  if(aField==='start'&&d.length===4)setTimeout(()=>{aField='end';updateTF()},200);
+}
+
+function renderPC(){
+  const w=document.getElementById('pauseChips');w.innerHTML='';
+  [15,30,60].forEach(v=>{const c=document.createElement('div');c.className='pause-chip'+(selPause===v?' active':'');c.textContent=v+'хв';c.addEventListener('click',()=>{selPause=v;renderPC();updateLR();document.getElementById('customPauseWrap').classList.remove('open');haptic('light')});w.appendChild(c)});
+  const cu=document.createElement('div');cu.className='pause-chip'+(![15,30,60].includes(selPause)?' active':'');cu.textContent='✎';
+  cu.addEventListener('click',()=>{document.getElementById('customPauseWrap').classList.toggle('open');haptic('light')});w.appendChild(cu);
+}
+document.getElementById('customPauseInput').addEventListener('input',e=>{selPause=Math.min(480,Math.max(0,parseInt(e.target.value)||0));renderPC();updateLR()});
+
+function updateLR(){
+  const s=tStr(eDig.start),e=tStr(eDig.end),net=cNet(s,e,selPause);
+  document.getElementById('lrValue').textContent=(s&&e)?fHM(net):'—';
+  const inc=document.getElementById('lrInc');
+  if(S.incomeOn&&s&&e&&net>0)inc.textContent=` · ${fE(incDisp(net))}`;else inc.textContent='';
+}
+
+document.getElementById('noteToggle').addEventListener('click',()=>{const a=document.getElementById('noteArea');a.classList.toggle('open');document.getElementById('noteToggle').textContent=a.classList.contains('open')?'Нотатка':'＋ Додати нотатку'});
+document.getElementById('btnSave').addEventListener('click',()=>{
+  const s=tStr(eDig.start),e=tStr(eDig.end);if(!s||!e){toast('Введіть час');return}
+  E[eKey||TK()]={start:s,end:e,pause:selPause,note:document.getElementById('noteText').value.trim()};
+  saveE(E);closeEntry();renderToday();toast('Збережено ✓');haptic('medium');
+});
+
+let shY=0;document.getElementById('entrySheet').addEventListener('touchstart',e=>{shY=e.touches[0].clientY});
+document.getElementById('entrySheet').addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-shY>80)closeEntry()});
+document.getElementById('backdrop').addEventListener('click',()=>{closeEntry();closeSett()});
+
+/* ═══ JOURNAL ═══ */
+let jM=N().getMonth(),jY=N().getFullYear();
+document.getElementById('prevMonth').addEventListener('click',()=>{jM--;if(jM<0){jM=11;jY--}renderJournal();haptic('light')});
+document.getElementById('nextMonth').addEventListener('click',()=>{jM++;if(jM>11){jM=0;jY++}renderJournal();haptic('light')});
+
+function renderJournal(){document.getElementById('monthTitle').textContent=`${MN[jM]} ${jY}`;renderCal();renderMonthSummary();renderJL()}
+
+function renderCal(){
+  const cal=document.getElementById('cal');cal.innerHTML='';
+  ['ПН','ВТ','СР','ЧТ','ПТ','СБ','НД'].forEach(d=>{const h=document.createElement('div');h.className='cal-hdr';h.textContent=d;cal.appendChild(h)});
+  const first=new Date(jY,jM,1);let sd=first.getDay();sd=sd===0?6:sd-1;
+  const dim=new Date(jY,jM+1,0).getDate(),ts=TK();
+
+  // padding before
+  for(let i=0;i<sd;i++){const c=document.createElement('div');c.className='cal-cell outside';c.textContent='·';cal.appendChild(c)}
+
+  for(let d=1;d<=dim;d++){
+    const k=`${jY}-${String(jM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dt=new Date(jY,jM,d),dow=dt.getDay();
+    const e=E[k],cell=document.createElement('div');
+    cell.className='cal-cell';
+    cell.textContent=d;
+
+    if(dow===0||dow===6)cell.classList.add('weekend');
+    if(k===ts)cell.classList.add('is-today');
+
+    if(e){
+      const hrs=cNet(e.start,e.end,e.pause)/60;
+      cell.classList.add('has-data');
+      if(hrs>=9)cell.classList.add('h9');
+      else if(hrs>=7)cell.classList.add('h7');
+      else if(hrs>=4)cell.classList.add('h4');
+      const hrsEl=document.createElement('span');hrsEl.className='cal-hrs';
+      hrsEl.textContent=Math.floor(hrs)+'г';cell.appendChild(hrsEl);
+    }
+
+    cell.addEventListener('click',()=>{
+      const t=document.querySelector(`[data-jk="${k}"]`);
+      if(t)t.scrollIntoView({behavior:'smooth',block:'center'});
+      haptic('light');
+    });
+    cal.appendChild(cell);
+  }
+
+  // padding after
+  const totalCells=sd+dim;
+  const remainder=totalCells%7;
+  if(remainder>0){for(let i=0;i<7-remainder;i++){const c=document.createElement('div');c.className='cal-cell outside';c.textContent='·';cal.appendChild(c)}}
+}
+
+function renderMonthSummary(){
+  const wrap=document.getElementById('monthSummary');
+  const pfx=`${jY}-${String(jM+1).padStart(2,'0')}`;
+  let mMins=0,mDays=0,mx=0;
+  Object.keys(E).forEach(k=>{
+    if(k.startsWith(pfx)){const net=cNet(E[k].start,E[k].end,E[k].pause);mMins+=net;mDays++;if(net>mx)mx=net}
+  });
+  const avg=mDays>0?(mMins/mDays/60).toFixed(1):'0';
+  let html=`
+    <div class="ms-card"><div class="ms-val">${(mMins/60).toFixed(1)}г</div><div class="ms-label">всього</div></div>
+    <div class="ms-card"><div class="ms-val">${mDays}</div><div class="ms-label">днів</div></div>
+    <div class="ms-card"><div class="ms-val">${avg}г</div><div class="ms-label">avg/день</div></div>`;
+  if(S.incomeOn&&mMins>0)html+=`<div class="ms-card"><div class="ms-val" style="font-size:13px">${fE(incDisp(mMins))}</div><div class="ms-label">${incLabel()}</div></div>`;
+  wrap.innerHTML=html;
+}
+
+function renderJL(){
+  const wr=document.getElementById('journalList');wr.innerHTML='';
+  const dim=new Date(jY,jM+1,0).getDate();let cw=-1,wg=null,wT=0;
+  for(let d=1;d<=dim;d++){
+    const dt=new Date(jY,jM,d),dow=dt.getDay();if(dow===0||dow===6)continue;
+    const wn=gWN(dt);
+    if(wn!==cw){
+      if(wg&&wT>0){let t=` · ${fHM(wT)}`;if(S.incomeOn)t+=` · ${fE(incDisp(wT))}`;wg.querySelector('.wg-h').textContent=t}
+      cw=wn;wT=0;wg=document.createElement('div');wg.className='week-group';wg.innerHTML=`<div class="week-group-title">Тиждень ${wn}<span class="wg-h"></span></div>`;wr.appendChild(wg)
+    }
+    const k=`${jY}-${String(jM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,e=E[k],row=document.createElement('div');row.className='journal-row';row.setAttribute('data-jk',k);
+    const dl=`${DS[dow]} ${d} ${MO[jM]}`;
+    if(e){
+      const net=cNet(e.start,e.end,e.pause);wT+=net;
+      let ih='';if(S.incomeOn)ih=`<span class="jr-inc">${fE(incDisp(net))}</span>`;
+      row.classList.add('has-data');
+      row.innerHTML=`<div class="jr-top"><div class="jr-date">${dl}</div><div class="jr-right"><span class="jr-range">${e.start}–${e.end}</span><span class="jr-badge">${fHM(net)}</span>${ih}</div></div><div class="jr-actions"><button class="jr-act-btn jr-act-edit" data-k="${k}">Редаг.</button><button class="jr-act-btn jr-act-del" data-k="${k}">Видал.</button></div>`;
+      row.querySelector('.jr-act-edit').addEventListener('click',ev=>{ev.stopPropagation();openEntry(k);haptic('light')});
+      row.querySelector('.jr-act-del').addEventListener('click',ev=>{ev.stopPropagation();if(confirm('Видалити запис?')){delete E[k];saveE(E);renderJournal();renderToday();toast('Видалено');haptic('medium')}});
+    }else{
+      row.innerHTML=`<div class="jr-date">${dl}</div><div class="jr-right"><span class="jr-empty">—</span><span class="jr-add">＋</span></div>`;
+      row.querySelector('.jr-add').addEventListener('click',ev=>{ev.stopPropagation();openEntry(k);haptic('light')});
+    }
+    wg.appendChild(row);
+  }
+  if(wg&&wT>0){let t=` · ${fHM(wT)}`;if(S.incomeOn)t+=` · ${fE(incDisp(wT))}`;wg.querySelector('.wg-h').textContent=t}
+}
+function gWN(d){const dt=new Date(d.getFullYear(),d.getMonth(),d.getDate());dt.setDate(dt.getDate()+3-(dt.getDay()+6)%7);const w1=new Date(dt.getFullYear(),0,4);return 1+Math.round(((dt-w1)/86400000-3+(w1.getDay()+6)%7)/7)}
+
+/* ═══ REPORT ═══ */
+let rP='this-week';
+document.getElementById('reportPeriodChips').addEventListener('click',e=>{const c=e.target.closest('.r-chip');if(!c)return;document.querySelectorAll('#reportPeriodChips .r-chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');rP=c.dataset.rp;renderReport();haptic('light')});
+
+function renderReport(){
+  const prev=document.getElementById('reportPreview');
+  const n=N();
+  let allDays=[],tM=0,recorded=0;
+
+  if(rP==='this-week'||rP==='last-week'){
+    const mon=rP==='this-week'?getMon(n):getMon(addD(n,-7));
+    const fri=addD(mon,4);
+    const rangeStr=`${mon.getDate()}.${String(mon.getMonth()+1).padStart(2,'0')} – ${fri.getDate()}.${String(fri.getMonth()+1).padStart(2,'0')}`;
+    for(let i=0;i<5;i++){
+      const d=addD(mon,i),k=dk(d),e=E[k];
+      const net=e?cNet(e.start,e.end,e.pause):0;
+      if(net>0){tM+=net;recorded++}
+      allDays.push({d,k,e,net});
+    }
+    let t=`Тиждень ${rangeStr}\n\n\n`;
+    allDays.forEach(({d,e,net})=>{
+      const label=`${DS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+      if(e&&net>0){
+        let line=`${label}  ${e.start} – ${e.end}`;
+        if(e.pause)line+=`  (пауза ${e.pause}хв)`;
+        line+=`  ${fHM(net)}`;
+        t+=`<strong>${line}</strong>\n`;
+      }else{
+        t+=`${label}  –\n`;
+      }
+    });
+    t+=`\n\n──────────\n`;
+    t+=`<span class="rp-total">Всього: ${fHM(tM)}</span>\n`;
+    if(recorded>0)t+=`<span class="rp-total">Середньо: ${fHM(Math.round(tM/recorded))} / день</span>\n`;
+    t+=`Записано: ${recorded} з 5`;
+    prev.innerHTML=t;
+  }else{
+    // month
+    const pfx=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+    const dim=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
+    let workdays=0;
+    for(let d=1;d<=dim;d++){
+      const dt=new Date(n.getFullYear(),n.getMonth(),d),dow=dt.getDay();
+      if(dow===0||dow===6)continue;
+      workdays++;
+      const k=`${pfx}-${String(d).padStart(2,'0')}`,e=E[k];
+      const net=e?cNet(e.start,e.end,e.pause):0;
+      if(net>0){tM+=net;recorded++}
+      allDays.push({d:dt,k,e,net});
+    }
+    let t=`${MN[n.getMonth()]} ${n.getFullYear()}\n\n\n`;
+    allDays.forEach(({d,e,net})=>{
+      const label=`${DS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+      if(e&&net>0){
+        let line=`${label}  ${e.start} – ${e.end}`;
+        if(e.pause)line+=`  (пауза ${e.pause}хв)`;
+        line+=`  ${fHM(net)}`;
+        t+=`<strong>${line}</strong>\n`;
+      }else{
+        t+=`${label}  –\n`;
+      }
+    });
+    t+=`\n\n──────────\n`;
+    t+=`<span class="rp-total">Всього: ${fHM(tM)}</span>\n`;
+    if(recorded>0)t+=`<span class="rp-total">Середньо: ${fHM(Math.round(tM/recorded))} / день</span>\n`;
+    t+=`Записано: ${recorded} з ${workdays}`;
+    prev.innerHTML=t;
+  }
+}
+function gRT(){return(document.getElementById('reportPreview').textContent||'').trim()}
+document.getElementById('btnCopyReport').addEventListener('click',()=>{navigator.clipboard.writeText(gRT()).then(()=>toast('Скопійовано ✓')).catch(()=>toast('Помилка'));haptic('medium')});
+
+/* ═══ SETTINGS ═══ */
+document.getElementById('btnSettings').addEventListener('click',()=>{renderSett();document.getElementById('backdrop').classList.add('open');document.getElementById('settingsSheet').classList.add('open');haptic('light')});
+function closeSett(){document.getElementById('settingsSheet').classList.remove('open');document.getElementById('backdrop').classList.remove('open')}
+function renderSett(){
+  document.getElementById('tplPauseVal').textContent=S.tplPause;
+  document.getElementById('rateInput').value=S.rate;
+  document.getElementById('netVal').textContent=S.netPct+'%';
+  const tog=document.getElementById('toggleIncome'),extra=document.getElementById('incomeExtra');
+  if(S.incomeOn){tog.classList.add('on');extra.style.display='block'}else{tog.classList.remove('on');extra.style.display='none'}
+  const togB=document.getElementById('toggleBrutto');
+  if(S.showBrutto)togB.classList.add('on');else togB.classList.remove('on');
+}
+document.getElementById('toggleIncome').addEventListener('click',()=>{S.incomeOn=!S.incomeOn;saveS(S);renderSett();renderToday();haptic('medium')});
+document.getElementById('toggleBrutto').addEventListener('click',()=>{S.showBrutto=!S.showBrutto;saveS(S);renderSett();renderToday();haptic('medium')});
+document.getElementById('rateInput').addEventListener('change',e=>{S.rate=Math.max(0,parseFloat(e.target.value)||0);saveS(S);renderToday()});
+document.getElementById('tplPauseMinus').addEventListener('click',()=>{S.tplPause=Math.max(0,S.tplPause-5);saveS(S);renderSett();haptic('light')});
+document.getElementById('tplPausePlus').addEventListener('click',()=>{S.tplPause=Math.min(120,S.tplPause+5);saveS(S);renderSett();haptic('light')});
+document.getElementById('netMinus').addEventListener('click',()=>{S.netPct=Math.max(50,S.netPct-1);saveS(S);renderSett();renderToday();haptic('light')});
+document.getElementById('netPlus').addEventListener('click',()=>{S.netPct=Math.min(100,S.netPct+1);saveS(S);renderSett();renderToday();haptic('light')});
+document.getElementById('btnClearAll').addEventListener('click',()=>{if(confirm('Видалити ВСІ записи?')){E={};saveE(E);renderToday();toast('Очищено');haptic('medium');closeSett()}});
+
+/* ═══ DEMO DATA ═══ */
+(function seed(){
+  if(Object.keys(E).length>0)return;
+  E['2026-02-16']={start:'07:00',end:'15:10',pause:30,note:''};
+  E['2026-02-17']={start:'07:00',end:'14:45',pause:30,note:''};
+  E['2026-02-18']={start:'07:00',end:'15:00',pause:30,note:''};
+  E['2026-02-19']={start:'07:00',end:'14:25',pause:30,note:''};
+  E['2026-02-23']={start:'07:00',end:'15:30',pause:30,note:''};
+  E['2026-02-24']={start:'07:00',end:'15:15',pause:30,note:''};
+  E['2026-02-25']={start:'07:00',end:'15:30',pause:30,note:''};
+  E['2026-02-26']={start:'07:00',end:'15:00',pause:30,note:''};
+  E['2026-02-27']={start:'07:00',end:'13:00',pause:0,note:''};
+  E['2026-03-02']={start:'07:00',end:'15:30',pause:30,note:''};
+  E['2026-03-03']={start:'07:00',end:'15:15',pause:30,note:''};
+  E['2026-03-04']={start:'07:00',end:'15:30',pause:30,note:''};
+  E['2026-03-05']={start:'07:00',end:'15:00',pause:30,note:''};
+  E['2026-03-06']={start:'07:00',end:'13:00',pause:0,note:''};
+  const mon=getMon(N()),dow=N().getDay(),maxI=dow===0?5:Math.min(dow-1,5);
+  for(let i=0;i<maxI;i++){const k=dk(addD(mon,i));if(!E[k]){if(i===4)E[k]={start:'07:00',end:'13:00',pause:0,note:''};else E[k]={start:'07:00',end:'15:30',pause:30,note:''}}}
+  saveE(E);
+})();
+
+renderToday();renderPC();
+document.getElementById('wkPrev').addEventListener('click',()=>{weekOffset--;renderWeekStrip();haptic('light')});
+document.getElementById('wkNext').addEventListener('click',()=>{if(weekOffset<0){weekOffset++;renderWeekStrip();haptic('light')}});
+if(tg&&tg.CloudStorage){try{tg.CloudStorage.getItem(SK_E,(err,val)=>{if(!err&&val){try{const cl=JSON.parse(val);E=Object.assign({},cl,E);saveE(E);renderToday()}catch(e){}}})}catch(e){}}
+</script>
+</body>
+</html>
